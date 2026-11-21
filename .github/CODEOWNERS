@@ -1,0 +1,6 @@
+# Cross-review: backend owner reviews frontend PRs and vice versa
+backend/   @Bhargavsahu
+frontend/  @SadiwalSachin
+docs/      @SadiwalSachin @Bhargavsahu
+docker/    @Bhargavsahu
+.github/   @SadiwalSachin

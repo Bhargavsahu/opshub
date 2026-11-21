@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.development
+.env.production
+.env.test
+.env.local
+.env.*.local
+
+# Build output
+backend/dist/
+frontend/dist/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/vitest.config.js
+frontend/vitest.config.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Docker volumes
+pgdata/
+
+# SSL certs (prod)
+docker/certbot/
+docker/ssl/

@@ -1,0 +1,15 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY frontend/package.json frontend/
+RUN npm ci --workspace=frontend
+
+COPY frontend/ frontend/
+RUN npm run build --workspace=frontend
+
+# Output: /app/frontend/dist — copy this to nginx volume or serve directly
+FROM nginx:1.27-alpine
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+# Note: nginx.conf is mounted via docker-compose, not baked in
+EXPOSE 80

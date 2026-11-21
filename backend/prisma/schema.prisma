@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Auth & Users ────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  role         Role     @default(EMPLOYEE)
+  googleId     String?  @unique
+  passwordHash String?  // only for seeded demo users
+  avatarUrl    String?
+  isDemo       Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  managerId String?
+  manager   User?   @relation("UserManager", fields: [managerId], references: [id])
+  reports   User[]  @relation("UserManager")
+
+  refreshTokens  RefreshToken[]
+  leaveRequests  LeaveRequest[]
+  leaveDecisions LeaveRequest[]  @relation("LeaveDecider")
+  tasksCreated   Task[]          @relation("TaskCreator")
+  tasksAssigned  Task[]          @relation("TaskAssignee")
+  chatMessages   ChatMessage[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Leave Management ────────────────────────────────────────
+
+model LeaveType {
+  id            String         @id @default(cuid())
+  name          String         @unique // e.g. "Annual", "Sick", "Casual"
+  defaultDays   Int
+  description   String?
+  leaveRequests LeaveRequest[]
+
+  @@map("leave_types")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  leaveTypeId String
+  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  decidedById String?
+  decidedBy   User?       @relation("LeaveDecider", fields: [decidedById], references: [id])
+  decisionNote String?
+  decidedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("leave_requests")
+}
+
+// ─── Inventory ───────────────────────────────────────────────
+
+model InventoryItem {
+  id           String          @id @default(cuid())
+  name         String
+  sku          String          @unique
+  description  String?
+  unit         String          @default("pcs")
+  quantity     Int             @default(0)
+  reorderLevel Int             @default(10)
+  category     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  movements    StockMovement[]
+
+  @@map("inventory_items")
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUST
+}
+
+model StockMovement {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+  type      MovementType
+  quantity  Int
+  note      String?
+  createdAt DateTime      @default(now())
+
+  @@index([itemId])
+  @@map("stock_movements")
+}
+
+// ─── Tasks ───────────────────────────────────────────────────
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  createdById String
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  assigneeId  String?
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([assigneeId])
+  @@index([status])
+  @@map("tasks")
+}
+
+// ─── Chat ────────────────────────────────────────────────────
+
+model ChatChannel {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  createdAt DateTime      @default(now())
+  messages  ChatMessage[]
+
+  @@map("chat_channels")
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  content   String
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  channelId String
+  channel   ChatChannel @relation(fields: [channelId], references: [id])
+  createdAt DateTime    @default(now())
+
+  @@index([channelId, createdAt])
+  @@map("chat_messages")
+}
+
+// ─── Audit Log ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // e.g. "leave.approve", "inventory.stockIn", "user.login"
+  entity    String?  // e.g. "LeaveRequest:clxyz..."
+  diff      Json?    // { before: {...}, after: {...} }
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
