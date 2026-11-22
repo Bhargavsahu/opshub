@@ -1,11 +1,12 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../../config/database.js";
 import { authenticate } from "../../middleware/authenticate.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
 // Dashboard summary (role-scoped)
-router.get("/summary", authenticate, async (req: Request, res: Response) => {
+router.get("/summary", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { role, userId } = req.user!;
 
   // Active users count
@@ -55,10 +56,10 @@ router.get("/summary", authenticate, async (req: Request, res: Response) => {
     totalItems,
     lowStockCount: Number(lowStockCount[0]?.count ?? 0),
   });
-});
+}));
 
 // Recent activity (audit log, ADMIN only shown full, others see own)
-router.get("/activity", authenticate, async (req: Request, res: Response) => {
+router.get("/activity", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { role, userId } = req.user!;
   const limit = Math.min(Number(req.query.limit) || 20, 100);
 
@@ -72,6 +73,6 @@ router.get("/activity", authenticate, async (req: Request, res: Response) => {
   });
 
   res.json(logs);
-});
+}));
 
 export default router;

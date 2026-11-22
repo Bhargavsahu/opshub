@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { config } from "dotenv";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
+import { existsSync } from "fs";
+import { fileURLToPath } from "url";
 
-// Load the right .env file based on NODE_ENV
 const envFile =
   process.env.NODE_ENV === "production"
     ? ".env.production"
@@ -10,7 +11,14 @@ const envFile =
       ? ".env.test"
       : ".env.development";
 
-config({ path: resolve(process.cwd(), envFile) });
+// Look in cwd first, then monorepo root (two levels up from this file)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const monorepoRoot = resolve(__dirname, "..", "..", "..");
+const cwdPath = resolve(process.cwd(), envFile);
+const rootPath = resolve(monorepoRoot, envFile);
+const envPath = existsSync(cwdPath) ? cwdPath : rootPath;
+
+config({ path: envPath });
 
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),

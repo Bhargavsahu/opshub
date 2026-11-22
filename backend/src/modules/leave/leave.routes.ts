@@ -10,23 +10,24 @@ import {
   decideLeaveRequest,
   cancelLeaveRequest,
 } from "./leave.service.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
 // Get leave types
-router.get("/types", authenticate, async (_req: Request, res: Response) => {
+router.get("/types", authenticate, asyncHandler(async (_req: Request, res: Response) => {
   const types = await prisma.leaveType.findMany({ orderBy: { name: "asc" } });
   res.json(types);
-});
+}));
 
 // Get my leave balance
-router.get("/balance", authenticate, async (req: Request, res: Response) => {
+router.get("/balance", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const balance = await getLeaveBalance(req.user!.userId);
   res.json(balance);
-});
+}));
 
 // List leave requests (scoped by role)
-router.get("/", authenticate, async (req: Request, res: Response) => {
+router.get("/", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { role, userId } = req.user!;
   let where: any = {};
 
@@ -50,21 +51,21 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     orderBy: { createdAt: "desc" },
   });
   res.json(requests);
-});
+}));
 
 // Apply for leave
 router.post(
   "/",
   authenticate,
   validate(createLeaveSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const request = await createLeaveRequest(
       req.user!.userId,
       req.body,
       req.ip,
     );
     res.status(201).json(request);
-  },
+  }),
 );
 
 // Approve / reject
@@ -73,7 +74,7 @@ router.patch(
   authenticate,
   requireRole("MANAGER", "ADMIN"),
   validate(decideLeaveSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const updated = await decideLeaveRequest(
       String(req.params.id),
       req.user!.userId,
@@ -82,21 +83,21 @@ router.patch(
       req.ip,
     );
     res.json(updated);
-  },
+  }),
 );
 
 // Cancel my request
 router.patch(
   "/:id/cancel",
   authenticate,
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const updated = await cancelLeaveRequest(
       String(req.params.id),
       req.user!.userId,
       req.ip,
     );
     res.json(updated);
-  },
+  }),
 );
 
 export default router;

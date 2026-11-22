@@ -6,11 +6,12 @@ import { requireRole } from "../../middleware/requireRole.js";
 import { validate } from "../../middleware/validate.js";
 import { logAudit } from "../../middleware/audit.js";
 import { AppError } from "../../utils/errors.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
 // List users (ADMIN: all, MANAGER: own reports, EMPLOYEE: minimal)
-router.get("/", authenticate, async (req: Request, res: Response) => {
+router.get("/", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { role, userId } = req.user!;
   let where: any = { isActive: true };
 
@@ -36,7 +37,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   });
 
   res.json(users);
-});
+}));
 
 // Update user role (ADMIN only)
 const updateRoleSchema = z.object({
@@ -48,7 +49,7 @@ router.patch(
   authenticate,
   requireRole("ADMIN"),
   validate(updateRoleSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({ where: { id: String(req.params.id) } });
     if (!user) throw AppError.notFound("User not found");
 
@@ -67,7 +68,7 @@ router.patch(
     });
 
     res.json(updated);
-  },
+  }),
 );
 
 // Assign manager (ADMIN only)
@@ -80,7 +81,7 @@ router.patch(
   authenticate,
   requireRole("ADMIN"),
   validate(assignManagerSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const updated = await prisma.user.update({
       where: { id: String(req.params.id) },
       data: { managerId: req.body.managerId },
@@ -96,7 +97,7 @@ router.patch(
     });
 
     res.json(updated);
-  },
+  }),
 );
 
 // Deactivate user (ADMIN only)
@@ -104,7 +105,7 @@ router.patch(
   "/:id/deactivate",
   authenticate,
   requireRole("ADMIN"),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const updated = await prisma.user.update({
       where: { id: String(req.params.id) },
       data: { isActive: false },
@@ -119,7 +120,7 @@ router.patch(
     });
 
     res.json(updated);
-  },
+  }),
 );
 
 export default router;

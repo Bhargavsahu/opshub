@@ -9,11 +9,12 @@ import {
 } from "./tasks.schema.js";
 import { changeTaskStatus } from "./tasks.service.js";
 import { logAudit } from "../../middleware/audit.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
 // List tasks (scoped by role)
-router.get("/", authenticate, async (req: Request, res: Response) => {
+router.get("/", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const { role, userId } = req.user!;
   let where: any = {};
 
@@ -50,14 +51,14 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
   });
   res.json(tasks);
-});
+}));
 
 // Create task
 router.post(
   "/",
   authenticate,
   validate(createTaskSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const task = await prisma.task.create({
       data: {
         ...req.body,
@@ -79,7 +80,7 @@ router.post(
     });
 
     res.status(201).json(task);
-  },
+  }),
 );
 
 // Update task details
@@ -87,7 +88,7 @@ router.patch(
   "/:id",
   authenticate,
   validate(updateTaskSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const task = await prisma.task.update({
       where: { id: String(req.params.id) },
       data: {
@@ -100,7 +101,7 @@ router.patch(
       },
     });
     res.json(task);
-  },
+  }),
 );
 
 // Change task status (button-driven state machine)
@@ -108,7 +109,7 @@ router.patch(
   "/:id/status",
   authenticate,
   validate(changeStatusSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const updated = await changeTaskStatus(
       String(req.params.id),
       req.body.status,
@@ -116,11 +117,11 @@ router.patch(
       req.ip,
     );
     res.json(updated);
-  },
+  }),
 );
 
 // Delete task (creator or ADMIN)
-router.delete("/:id", authenticate, async (req: Request, res: Response) => {
+router.delete("/:id", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const id = String(req.params.id);
   const task = await prisma.task.findUnique({ where: { id } });
   if (!task) {
@@ -135,6 +136,6 @@ router.delete("/:id", authenticate, async (req: Request, res: Response) => {
 
   await prisma.task.delete({ where: { id } });
   res.json({ message: "Deleted" });
-});
+}));
 
 export default router;

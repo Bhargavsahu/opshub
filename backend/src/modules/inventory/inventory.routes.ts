@@ -14,11 +14,12 @@ import {
   recordStockMovement,
   getLowStockItems,
 } from "./inventory.service.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
 // List all items (everyone can read)
-router.get("/", authenticate, async (req: Request, res: Response) => {
+router.get("/", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const search = req.query.search ? String(req.query.search) : undefined;
   const category = req.query.category ? String(req.query.category) : undefined;
 
@@ -38,10 +39,10 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     orderBy: { name: "asc" },
   });
   res.json(items);
-});
+}));
 
 // Get single item with movements
-router.get("/:id", authenticate, async (req: Request, res: Response) => {
+router.get("/:id", authenticate, asyncHandler(async (req: Request, res: Response) => {
   const item = await prisma.inventoryItem.findUnique({
     where: { id: String(req.params.id) },
     include: {
@@ -53,17 +54,17 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
     return;
   }
   res.json(item);
-});
+}));
 
 // Low stock items (MANAGER, ADMIN)
 router.get(
   "/alerts/low-stock",
   authenticate,
   requireRole("MANAGER", "ADMIN"),
-  async (_req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const items = await getLowStockItems();
     res.json(items);
-  },
+  }),
 );
 
 // Create item (MANAGER, ADMIN)
@@ -72,10 +73,10 @@ router.post(
   authenticate,
   requireRole("MANAGER", "ADMIN"),
   validate(createItemSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const item = await createItem(req.body, req.user!.userId, req.ip);
     res.status(201).json(item);
-  },
+  }),
 );
 
 // Update item (MANAGER, ADMIN)
@@ -84,7 +85,7 @@ router.patch(
   authenticate,
   requireRole("MANAGER", "ADMIN"),
   validate(updateItemSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const item = await updateItem(
       String(req.params.id),
       req.body,
@@ -92,7 +93,7 @@ router.patch(
       req.ip,
     );
     res.json(item);
-  },
+  }),
 );
 
 // Record stock movement (MANAGER, ADMIN)
@@ -101,7 +102,7 @@ router.post(
   authenticate,
   requireRole("MANAGER", "ADMIN"),
   validate(stockMovementSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const result = await recordStockMovement(
       String(req.params.id),
       req.body,
@@ -109,7 +110,7 @@ router.post(
       req.ip,
     );
     res.status(201).json(result);
-  },
+  }),
 );
 
 export default router;

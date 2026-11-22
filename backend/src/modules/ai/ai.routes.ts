@@ -7,6 +7,7 @@ import { env } from "../../config/env.js";
 import { toolDefinitions, executeTool } from "./ai.tools.js";
 import { logAudit } from "../../middleware/audit.js";
 import { AppError } from "../../utils/errors.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 const router = Router();
 
@@ -39,7 +40,7 @@ router.post(
   "/chat",
   authenticate,
   validate(chatSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId, role, email } = req.user!;
 
     if (!env.GEMINI_API_KEY) {
@@ -133,7 +134,7 @@ Be concise and helpful. Format data in a readable way.`,
           "Sorry, I encountered an error processing your request. Please try again.",
       });
     }
-  },
+  }),
 );
 
 export default router;
