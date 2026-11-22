@@ -5,11 +5,12 @@ COPY package.json package-lock.json ./
 COPY frontend/package.json frontend/
 RUN npm ci --workspace=frontend
 
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
 COPY frontend/ frontend/
 RUN npm run build --workspace=frontend
 
-# Output: /app/frontend/dist — copy this to nginx volume or serve directly
 FROM nginx:1.27-alpine
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
-# Note: nginx.conf is mounted via docker-compose, not baked in
 EXPOSE 80
