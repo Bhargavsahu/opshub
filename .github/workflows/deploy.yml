@@ -1,0 +1,72 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd ~/opshub
+
+            echo "==> Pulling latest code..."
+            git pull origin main
+
+            echo "==> Loading environment..."
+            set -a; source .env.production; set +a
+
+            echo "==> Running database migrations..."
+            cd backend
+            npx prisma generate
+            npx prisma migrate deploy
+            cd ..
+
+            echo "==> Building and starting containers..."
+            export VITE_GOOGLE_CLIENT_ID="${{ secrets.VITE_GOOGLE_CLIENT_ID }}"
+            docker compose -f docker/docker-compose.prod.yml up -d --build
+
+            echo "==> Waiting for services..."
+            sleep 15
+
+            echo "==> Health check..."
+            if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "✅ API is healthy"
+            else
+              echo "⚠️  Direct health check failed, trying via nginx..."
+              if curl -sf https://opshub.boardify.space/api/health > /dev/null 2>&1; then
+                echo "✅ API is healthy (via nginx)"
+              else
+                echo "❌ Health check failed"
+                docker logs opshub-api --tail 30
+                exit 1
+              fi
+            fi
+
+            echo "==> Cleaning up old Docker images..."
+            docker image prune -f
+
+            echo "✅ Deploy complete!"

@@ -25,9 +25,11 @@ export VITE_GOOGLE_CLIENT_ID="710620516333-8tb5sjd5h0ebujbmeoadnptq6ei7db1u.apps
 docker compose -f docker/docker-compose.prod.yml up -d --build
 
 echo "==> Health check..."
-sleep 10
-if curl -sf http://localhost:3001/api/health > /dev/null; then
+sleep 15
+if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
   echo "✅ API is healthy"
+elif curl -sf https://opshub.boardify.space/api/health > /dev/null 2>&1; then
+  echo "✅ API is healthy (via nginx)"
 else
   echo "❌ API health check failed"
   docker logs opshub-api --tail 30
